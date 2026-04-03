@@ -294,8 +294,12 @@ func NewSchemaElementFromTagMap(info *Tag) (*parquet.SchemaElement, error) {
 	schema := parquet.NewSchemaElement()
 	schema.Name = info.InName
 	schema.TypeLength = &info.Length
-	schema.Scale = &info.Scale
-	schema.Precision = &info.Precision
+	// Only set Scale and Precision when explicitly configured (non-zero).
+	// Unconditionally setting them causes Impala to interpret all columns as DECIMAL.
+	if info.Scale != 0 || info.Precision != 0 {
+		schema.Scale = &info.Scale
+		schema.Precision = &info.Precision
+	}
 	schema.FieldID = &info.FieldID
 	schema.RepetitionType = &info.RepetitionType
 	schema.NumChildren = nil
