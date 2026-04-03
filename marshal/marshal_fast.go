@@ -4,11 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/goccy/go-reflect"
-	"github.com/xitongsys/parquet-go/common"
-	"github.com/xitongsys/parquet-go/layout"
-	"github.com/xitongsys/parquet-go/parquet"
-	"github.com/xitongsys/parquet-go/schema"
-	"github.com/xitongsys/parquet-go/types"
+	"github.com/imysm/parquet-go/common"
+	"github.com/imysm/parquet-go/layout"
+	"github.com/imysm/parquet-go/parquet"
+	"github.com/imysm/parquet-go/schema"
+	"github.com/imysm/parquet-go/types"
 	"unsafe"
 )
 

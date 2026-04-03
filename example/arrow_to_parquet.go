@@ -8,9 +8,9 @@ import (
 	"github.com/apache/arrow/go/v12/arrow"
 	"github.com/apache/arrow/go/v12/arrow/array"
 	"github.com/apache/arrow/go/v12/arrow/memory"
-	"github.com/xitongsys/parquet-go-source/local"
-	"github.com/xitongsys/parquet-go/reader"
-	"github.com/xitongsys/parquet-go/writer"
+	"github.com/imysm/parquet-go/source/local"
+	"github.com/imysm/parquet-go/reader"
+	"github.com/imysm/parquet-go/writer"
 )
 
 func main() {

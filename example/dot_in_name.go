@@ -3,10 +3,10 @@ package main
 import (
 	"log"
 
-	"github.com/xitongsys/parquet-go-source/local"
-	"github.com/xitongsys/parquet-go/parquet"
-	"github.com/xitongsys/parquet-go/reader"
-	"github.com/xitongsys/parquet-go/writer"
+	"github.com/imysm/parquet-go/source/local"
+	"github.com/imysm/parquet-go/parquet"
+	"github.com/imysm/parquet-go/reader"
+	"github.com/imysm/parquet-go/writer"
 )
 
 type A struct {
