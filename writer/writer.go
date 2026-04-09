@@ -517,33 +517,32 @@ func (pw *ParquetWriter) WriteRows(rows [][]any, columnPaths []string) error {
 	}
 
 	// Convert tables to pages (same logic as flushObjs but for a single batch)
-	for name, table := range *tableMap {
-		if table.Info.Encoding == parquet.Encoding_PLAIN_DICTIONARY ||
-			table.Info.Encoding == parquet.Encoding_RLE_DICTIONARY {
-			if _, ok := pw.DictRecs[name]; !ok {
-				pw.DictRecs[name] = layout.NewDictRec(*table.Schema.Type)
-			}
-			pages, _ := layout.TableToDictDataPages(pw.DictRecs[name],
-				table, int32(pw.PageSize), 32, pw.CompressionType)
-			if _, ok := pw.PagesMapBuf[name]; !ok {
-				pw.PagesMapBuf[name] = pages
+		// Convert tables to pages (same logic as flushObjs but for a single batch)
+		for name, table := range *tableMap {
+			var pages []*layout.Page
+			if table.Info.Encoding == parquet.Encoding_PLAIN_DICTIONARY ||
+				table.Info.Encoding == parquet.Encoding_RLE_DICTIONARY {
+				if _, ok := pw.DictRecs[name]; !ok {
+					pw.DictRecs[name] = layout.NewDictRec(*table.Schema.Type)
+				}
+				pages, _ = layout.TableToDictDataPages(pw.DictRecs[name],
+					table, int32(pw.PageSize), 32, pw.CompressionType)
 			} else {
-				pw.PagesMapBuf[name] = append(pw.PagesMapBuf[name], pages...)
-			}
-		} else {
-			pages, _ := layout.TableToDataPages(table, int32(pw.PageSize),
+				pages, _ = layout.TableToDataPages(table, int32(pw.PageSize),
 				pw.CompressionType)
+			}
+
+			// Append new pages and account for their size only
+			for _, page := range pages {
+				pw.Size += int64(len(page.RawData))
+				page.DataTable = nil
+			}
 			if _, ok := pw.PagesMapBuf[name]; !ok {
 				pw.PagesMapBuf[name] = pages
 			} else {
 				pw.PagesMapBuf[name] = append(pw.PagesMapBuf[name], pages...)
 			}
 		}
-		for _, page := range pw.PagesMapBuf[name] {
-			pw.Size += int64(len(page.RawData))
-			page.DataTable = nil
-		}
-	}
 
 	pw.NumRows += int64(len(rows))
 

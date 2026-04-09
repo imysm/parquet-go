@@ -370,16 +370,16 @@ func setupTableMap(schemaHandler *schema.SchemaHandler, numElements int) map[str
 // without using reflection. Each row is a slice of values ordered by leaf column index.
 // columnPaths maps column index to the schema path string.
 // This bypasses the map[string]any → reflect → marshal path for flat schemas.
-func MarshalFlat(rows [][]any, schemaHandler *schema.SchemaHandler, columnPaths []string) (*map[string]*layout.Table, error) {
+func MarshalFlat(rows [][]any, schemaHandler *schema.SchemaHandler, columnPaths []string) (result *map[string]*layout.Table, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			switch x := r.(type) {
 			case string:
-				panic(errors.New(x))
+				err = errors.New(x)
 			case error:
-				panic(x)
+				err = x
 			default:
-				panic(errors.New("unknown error in MarshalFlat"))
+				err = errors.New("unknown error in MarshalFlat")
 			}
 		}
 	}()
@@ -410,7 +410,11 @@ func MarshalFlat(rows [][]any, schemaHandler *schema.SchemaHandler, columnPaths 
 				val := row[colIdx]
 				if val == nil {
 					values = append(values, nil)
-					defLevels = append(defLevels, maxDL-1)
+					dl := maxDL - 1
+					if dl < 0 {
+						dl = 0
+					}
+					defLevels = append(defLevels, dl)
 				} else {
 					if pT != nil {
 						values = append(values, types.InterfaceToParquetType(val, pT))
@@ -421,7 +425,11 @@ func MarshalFlat(rows [][]any, schemaHandler *schema.SchemaHandler, columnPaths 
 				}
 			} else {
 				values = append(values, nil)
-				defLevels = append(defLevels, maxDL-1)
+				dl := maxDL - 1
+				if dl < 0 {
+					dl = 0
+				}
+				defLevels = append(defLevels, dl)
 			}
 			repLevels = append(repLevels, 0)
 		}
