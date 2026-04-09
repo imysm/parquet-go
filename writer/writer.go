@@ -498,3 +498,62 @@ func (pw *ParquetWriter) Flush(flag bool) error {
 	return nil
 
 }
+
+// WriteRows writes flat row data directly to Parquet without per-row map allocation
+// or reflection. rows is a slice of value slices, each ordered by leaf column index.
+// columnPaths maps column index to the schema path string.
+// This bypasses the Write → Objs → Marshal(reflect) pipeline for flat schemas.
+func (pw *ParquetWriter) WriteRows(rows [][]any, columnPaths []string) error {
+	if pw.stopped {
+		return errors.New("writer is stopped")
+	}
+	if len(rows) == 0 {
+		return nil
+	}
+
+	tableMap, err := marshal.MarshalFlat(rows, pw.SchemaHandler, columnPaths)
+	if err != nil {
+		return err
+	}
+
+	// Convert tables to pages (same logic as flushObjs but for a single batch)
+	for name, table := range *tableMap {
+		if table.Info.Encoding == parquet.Encoding_PLAIN_DICTIONARY ||
+			table.Info.Encoding == parquet.Encoding_RLE_DICTIONARY {
+			if _, ok := pw.DictRecs[name]; !ok {
+				pw.DictRecs[name] = layout.NewDictRec(*table.Schema.Type)
+			}
+			pages, _ := layout.TableToDictDataPages(pw.DictRecs[name],
+				table, int32(pw.PageSize), 32, pw.CompressionType)
+			if _, ok := pw.PagesMapBuf[name]; !ok {
+				pw.PagesMapBuf[name] = pages
+			} else {
+				pw.PagesMapBuf[name] = append(pw.PagesMapBuf[name], pages...)
+			}
+		} else {
+			pages, _ := layout.TableToDataPages(table, int32(pw.PageSize),
+				pw.CompressionType)
+			if _, ok := pw.PagesMapBuf[name]; !ok {
+				pw.PagesMapBuf[name] = pages
+			} else {
+				pw.PagesMapBuf[name] = append(pw.PagesMapBuf[name], pages...)
+			}
+		}
+		for _, page := range pw.PagesMapBuf[name] {
+			pw.Size += int64(len(page.RawData))
+			page.DataTable = nil
+		}
+	}
+
+	pw.NumRows += int64(len(rows))
+
+	// Flush row group if size threshold reached
+	if pw.Size >= pw.RowGroupSize {
+		if err := pw.Flush(true); err != nil {
+			return err
+		}
+	}
+
+	pw.Footer.NumRows += int64(len(rows))
+	return nil
+}
