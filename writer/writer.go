@@ -243,7 +243,11 @@ func (pw *ParquetWriter) Write(src interface{}) error {
 		pw.ObjSize = (pw.ObjSize+common.SizeOf(val))/2 + 1
 	}
 	pw.ObjsSize += pw.ObjSize
-	pw.Objs = append(pw.Objs, src)
+	if m, ok := src.(map[string]any); ok {
+		pw.Objs = append(pw.Objs, common.DeepCopyMap(m))
+	} else {
+		pw.Objs = append(pw.Objs, src)
+	}
 
 	criSize := pw.NP * pw.PageSize * pw.SchemaHandler.GetColumnNum()
 
